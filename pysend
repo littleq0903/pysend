@@ -57,9 +57,19 @@ def main():
     if DEBUG:
         print html_content
     mail = MIMEText(html_content, 'html')
+    mail['Subject'] = find_title(html_content)
+    mail['From'] = DEFAULT_SENDOR
 
     send_out(mail, options.smtpserver, options.smtpport, receipts, **more_options)
 
+def find_title(content):
+    START_TAG = '<title>'
+    END_TAG   = '</title>'
+
+    start = content.find(START_TAG) + len(START_TAG)
+    end = content.find(END_TAG)
+
+    return content[start:end]
 
 def get_receipts(fp):
     """
