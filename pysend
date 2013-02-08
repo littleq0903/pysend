@@ -1,0 +1,94 @@
+#!/usr/bin/env python
+"""
+    Send the specified html-formatted content to a list of email addresses.
+"""
+
+import sys
+from argparse import ArgumentParser, FileType
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+
+PROG_NAME = "PySend"
+DEBUG = True
+DESCRIPTION = """
+PySend - Send the specified html-formatted content to a list of email addresses.
+"""
+DEFAULT_SENDOR='98703060@nccu.edu.tw'
+#DEFAULT_SMTP_SERVER= 'localhost'
+DEFAULT_SMTP_SERVER= 'smtp.gmail.com'
+DEFAULT_SMTP_PORT  = 25
+#DEFAULT_SMTP_PORT  = 465
+
+
+# Define Parser
+parser = ArgumentParser(description=DESCRIPTION)
+parser.add_argument('-r', '--rcptfile', type=FileType('r'), help='')
+parser.add_argument('-t', '--template',type=FileType('r'), help='')
+parser.add_argument('--smtpserver',type=str, default=DEFAULT_SMTP_SERVER, help='')
+parser.add_argument('--smtpport',type=int, default=DEFAULT_SMTP_PORT, help='')
+parser.add_argument('-u', '--user', type=str, help='')
+
+def main():
+    arguments = sys.argv[1:]
+    if DEBUG:
+        print parser.parse_args(arguments)
+    options = parser.parse_args(arguments)
+
+    # Argument checking
+    if options.rcptfile and options.template:
+        pass
+    else:
+        print "[PySend:Error] Please provide receipts's list and content template"
+        print parser.print_help()
+        sys.exit(1)
+
+    receipts = get_receipts(options.rcptfile)
+    html_content = options.template.read()
+    if options.user:
+        password = raw_input("SMTP Password: ")
+        more_options = {
+                'password': password,
+                'user': options.user
+                }
+    else:
+        more_options = {}
+
+    if DEBUG:
+        print html_content
+    mail = MIMEText(html_content, 'html')
+
+    send_out(mail, options.smtpserver, options.smtpport, receipts, **more_options)
+
+
+def get_receipts(fp):
+    """
+    split all file into mails' list
+    TODO: check line by line whether they're real mail address
+    """
+    receipts = fp.readlines()
+    return receipts
+
+def send_out(mail, smtp_server, smtp_port, receipts, user='', password=''):
+    server = smtplib.SMTP(smtp_server, smtp_port)
+    if not receipts:
+        print "[PySend:Warning] Receipts' list is empty"
+
+    if DEBUG:
+        server.set_debuglevel(1)
+
+    if user:
+        server.ehlo()
+        server.starttls()
+        server.ehlo()
+        server.login(user, password)
+
+    map(lambda rcpt: server.sendmail(DEFAULT_SENDOR, rcpt, mail.as_string()), receipts)
+
+    server.quit()
+
+
+
+if __name__ == '__main__':
+    main()
+
